@@ -785,12 +785,12 @@ export class TextFileEditorModel extends BaseTextEditorModel implements ITextFil
 		}
 
 		// Check for locale file
-		if (isEqual(this.resource, joinPath(this.environmentService.appSettingsHome, 'locale.json'), !isLinux)) {
+		if (isEqual(this.resource, joinPath(this.environmentService.userRoamingDataHome, 'locale.json'), !isLinux)) {
 			return 'locale';
 		}
 
 		// Check for snippets
-		if (isEqualOrParent(this.resource, joinPath(this.environmentService.appSettingsHome, 'snippets'))) {
+		if (isEqualOrParent(this.resource, joinPath(this.environmentService.userRoamingDataHome, 'snippets'))) {
 			return 'snippets';
 		}
 
@@ -816,7 +816,8 @@ export class TextFileEditorModel extends BaseTextEditorModel implements ITextFil
 			mimeType: guessMimeTypes(this.resource).join(', '),
 			ext,
 			path: hash(path),
-			reason
+			reason,
+			whitelistedjson: undefined as string | undefined
 		};
 
 		if (ext === '.json' && TextFileEditorModel.WHITELIST_JSON.indexOf(fileName) > -1) {

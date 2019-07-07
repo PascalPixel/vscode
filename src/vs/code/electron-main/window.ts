@@ -322,7 +322,7 @@ export class CodeWindow extends Disposable implements ICodeWindow {
 		const urls = ['https://marketplace.visualstudio.com/*', 'https://*.vsassets.io/*'];
 		this._win.webContents.session.webRequest.onBeforeSendHeaders({ urls }, (details, cb) => {
 			this.marketplaceHeadersPromise.then(headers => {
-				const requestHeaders = objects.assign(details.requestHeaders, headers);
+				const requestHeaders = objects.assign(details.requestHeaders, headers) as { [key: string]: string | undefined };
 				if (!this.configurationService.getValue('extensions.disableExperimentalAzureSearch')) {
 					requestHeaders['Cookie'] = `${requestHeaders['Cookie'] ? requestHeaders['Cookie'] + ';' : ''}EnableExternalSearchForVSCode=true`;
 				}
@@ -346,12 +346,14 @@ export class CodeWindow extends Disposable implements ICodeWindow {
 		});
 
 		this._win.webContents.session.webRequest.onHeadersReceived(null!, (details, callback) => {
-			const contentType: string[] = (details.responseHeaders['content-type'] || details.responseHeaders['Content-Type']);
+			const responseHeaders = details.responseHeaders as { [key: string]: string[] };
+
+			const contentType: string[] = (responseHeaders['content-type'] || responseHeaders['Content-Type']);
 			if (contentType && Array.isArray(contentType) && contentType.some(x => x.toLowerCase().indexOf('image/svg') >= 0)) {
 				return callback({ cancel: true });
 			}
 
-			return callback({ cancel: false, responseHeaders: details.responseHeaders });
+			return callback({ cancel: false, responseHeaders });
 		});
 
 		// Remember that we loaded
@@ -376,9 +378,6 @@ export class CodeWindow extends Disposable implements ICodeWindow {
 				}
 			}
 		});
-
-		// App commands support
-		this.registerNavigationListenerOn('app-command', 'browser-backward', 'browser-forward', false);
 
 		// Window Focus
 		this._win.on('focus', () => {
@@ -470,23 +469,23 @@ export class CodeWindow extends Disposable implements ICodeWindow {
 		if (isMacintosh) {
 			const config = this.configurationService.getValue<IWorkbenchEditorConfiguration>();
 			if (config && config.workbench && config.workbench.editor && config.workbench.editor.swipeToNavigate) {
-				this.registerNavigationListenerOn('swipe', 'left', 'right', true);
+				this.registerSwipeListener();
 			} else {
 				this._win.removeAllListeners('swipe');
 			}
 		}
 	}
 
-	private registerNavigationListenerOn(command: 'swipe' | 'app-command', back: 'left' | 'browser-backward', forward: 'right' | 'browser-forward', acrossEditors: boolean) {
-		this._win.on(command as 'swipe' /* | 'app-command' */, (e: Electron.Event, cmd: string) => {
+	private registerSwipeListener() {
+		this._win.on('swipe', (event: Electron.Event, cmd: string) => {
 			if (!this.isReady) {
 				return; // window must be ready
 			}
 
-			if (cmd === back) {
-				this.send('vscode:runAction', { id: acrossEditors ? 'workbench.action.openPreviousRecentlyUsedEditor' : 'workbench.action.navigateBack', from: 'mouse' } as IRunActionInWindowRequest);
-			} else if (cmd === forward) {
-				this.send('vscode:runAction', { id: acrossEditors ? 'workbench.action.openNextRecentlyUsedEditor' : 'workbench.action.navigateForward', from: 'mouse' } as IRunActionInWindowRequest);
+			if (cmd === 'left') {
+				this.send('vscode:runAction', { id: 'workbench.action.openPreviousRecentlyUsedEditor', from: 'mouse' } as IRunActionInWindowRequest);
+			} else if (cmd === 'right') {
+				this.send('vscode:runAction', { id: 'workbench.action.openNextRecentlyUsedEditor', from: 'mouse' } as IRunActionInWindowRequest);
 			}
 		});
 	}
